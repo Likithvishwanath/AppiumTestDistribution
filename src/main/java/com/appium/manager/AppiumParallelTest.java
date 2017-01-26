@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,26 +57,20 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
     private DeviceManager deviceManager;
     public ConfigurationManager prop;
     public IOSDeviceConfiguration iosDevice;
-
     public AppiumDriver<MobileElement> driver = null;
     public AppiumManager appiumMan;
     public String device_udid;
-    public List<LogEntry> logEntries;
-    public PrintWriter log_file_writer;
     public String category = null;
-
     public String deviceModel;
     public File scrFile = null;
     public String testDescription = "";
     private String CI_BASE_URI = null;
-
     public ThreadLocal<ExtentTest> parentTest = new ThreadLocal<ExtentTest>();
     public ThreadLocal<ExtentTest> test = new ThreadLocal<ExtentTest>();
     public ExtentTest parent;
     public ExtentTest child;
-
     private AndroidDeviceConfiguration androidDevice;
-    private Flick videoRecording = new Flick();
+    private String className;
 
     public AppiumParallelTest() {
         try {
@@ -274,7 +269,8 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
     public void startingServerInstance(DesiredCapabilities iosCaps, DesiredCapabilities androidCaps)
             throws Exception {
         if (prop.getProperty("APP_TYPE").equalsIgnoreCase("web")) {
-            driver = new AndroidDriver<>(appiumMan.getAppiumUrl(), deviceCapabilityManager.androidWeb());
+            driver = new AndroidDriver<>(appiumMan.getAppiumUrl(),
+                    deviceCapabilityManager.androidWeb());
         } else {
             if (System.getProperty("os.name").toLowerCase().contains("mac")) {
                 if (prop.getProperty("IOS_APP_PATH") != null
@@ -287,14 +283,14 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
                     if (androidCaps == null) {
                         androidCaps = deviceCapabilityManager.androidNative(device_udid);
                     }
-                    checkSelendroid(androidCaps);
+                    //checkSelendroid(androidCaps);
                     driver = new AndroidDriver<>(appiumMan.getAppiumUrl(), androidCaps);
                 }
             } else {
                 if (androidCaps == null) {
                     androidCaps = deviceCapabilityManager.androidNative(device_udid);
                 }
-                checkSelendroid(androidCaps);
+                //checkSelendroid(androidCaps);
                 driver = new AndroidDriver<>(appiumMan.getAppiumUrl(), androidCaps);
             }
         }
@@ -330,17 +326,16 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
     }
 
     public void startLogResults(String methodName) throws FileNotFoundException {
-        testLogger.startLogging(methodName, driver, device_udid);
+        testLogger.startLogging(methodName, driver, device_udid,getClass().getName());
     }
 
     public void endLogTestResults(ITestResult result) throws IOException, InterruptedException {
         if (driver.toString().split(":")[0].trim().equals("AndroidDriver")) {
             deviceModel = androidDevice.getDeviceModel(device_udid);
-        }else if (driver.toString().split(":")[0].trim().equals("IOSDriver")) {
+        } else if (driver.toString().split(":")[0].trim().equals("IOSDriver")) {
             deviceModel = iosDevice.getIOSDeviceProductTypeAndVersion(device_udid);
         }
-
-        testLogger.endLog(result, this, device_udid, deviceModel, test, driver);
+        testLogger.endLog(result, device_udid, deviceModel, test, driver);
     }
 
     @AfterClass(alwaysRun = true)
@@ -401,6 +396,8 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
 
     public void onTestStart(ITestResult result) {
         Object currentClass = result.getInstance();
+        className = result.getTestClass().getRealClass().getSimpleName();
+        System.out.println("on test start:::" + className);
         AppiumDriver<MobileElement> driver = ((AppiumParallelTest) currentClass).getDriver();
         SkipIf skip =
                 result.getMethod().getConstructorOrMethod().getMethod().getAnnotation(SkipIf.class);
@@ -443,21 +440,6 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
         String methodName = new Exception().getStackTrace()[1].getMethodName();
         String className = new Exception().getStackTrace()[1].getClassName();
         //testLogger.captureScreenShot(screenShotName, 1, className, methodName, this);
-    }
-
-    public void writeFailureToTxt(String content) {
-        try {
-            File file = new File(System.getProperty("user.dir") + "/target/failed.txt");
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-            FileWriter fw = new FileWriter(file.getAbsoluteFile(), true);
-            BufferedWriter bw = new BufferedWriter(fw);
-            bw.write(content);
-            bw.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     public MobilePlatform getMobilePlatform(String device_udid) {

@@ -44,8 +44,8 @@ class TestLogger {
     }
 
     void startLogging(String methodName, AppiumDriver<MobileElement> driver,
-                      String device_udid) throws FileNotFoundException {
-        startVideoRecording(methodName, device_udid);
+                      String device_udid, String className) throws FileNotFoundException {
+        startVideoRecording(methodName, device_udid, className);
         if (driver.toString().split("\\(")[0].trim().equals("AndroidDriver:  on LINUX")) {
             System.out.println("Starting ADB logs" + device_udid);
             logEntries = driver.manage().logs().get("logcat").filter(Level.ALL);
@@ -55,11 +55,11 @@ class TestLogger {
         }
     }
 
-    private void startVideoRecording(String methodName, String device_udid) {
+    private void startVideoRecording(String methodName, String device_udid, String className) {
         if (System.getenv("VIDEO_LOGS") != null) {
             try {
                 videoRecording
-                        .startVideoRecording(device_udid, getClass().getName(),
+                        .startVideoRecording(device_udid, className,
                                 methodName, methodName);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -69,23 +69,11 @@ class TestLogger {
         }
     }
 
-    public void endLog(ITestResult result, AppiumParallelTest appiumParallelTest, String device_udid,
+    public void endLog(ITestResult result, String device_udid,
                        String deviceModel, ThreadLocal<ExtentTest> test,
-                       AppiumDriver<MobileElement> driver) throws IOException, InterruptedException {
-        final String classNameCur = result.getName().split(" ")[2].substring(1);
-        final Package[] packages = Package.getPackages();
-        String className = null;
-        for (final Package p : packages) {
-            final String pack = p.getName();
-            final String tentative = pack + "." + classNameCur;
-            try {
-                Class.forName(tentative);
-            } catch (final ClassNotFoundException e) {
-                continue;
-            }
-            className = tentative;
-            break;
-        }
+                       AppiumDriver<MobileElement> driver)
+            throws IOException, InterruptedException {
+        String className = getClassName(result.getName().split(" ")[2]);
         stopViewRecording(result, className, device_udid);
 
         if (result.isSuccess()) {
@@ -100,32 +88,34 @@ class TestLogger {
          * Skip block
          */
         if (result.getStatus() == ITestResult.SKIP) {
-            appiumParallelTest.writeFailureToTxt("TestSkipped");
-            appiumParallelTest.test.get().log(Status.SKIP, "Test skipped");
+            test.get().log(Status.SKIP, "Test skipped");
         }
 
         if (System.getenv("VIDEO_LOGS") != null) {
-            if (appiumParallelTest.driver.toString().split("\\(")[0].trim().equals("AndroidDriver:  on LINUX")) {
-                if (new File(System.getProperty("user.dir")
-                        + "/target/screenshot/android/" + appiumParallelTest.device_udid
+            if (driver.toString().split("\\(")[0].trim().equals("AndroidDriver:  on LINUX")) {
+                String videoFilePath = System.getProperty("user.dir")
+                        + "/target/screenshot/android/" + device_udid
                         .replaceAll("\\W", "_") + "/" + className + "/" + result.getMethod()
-                        .getMethodName() + "/" + result.getMethod().getMethodName() + ".mp4")
-                        .exists()) {
-                    appiumParallelTest.test.get().log(Status.INFO, "<a target=\"_parent\" href="
-                            + "screenshot/android/" + appiumParallelTest.device_udid.replaceAll("\\W", "_")
+                        .getMethodName() + "/" + result.getMethod().getMethodName() + ".mp4";
+                boolean exists = new File(videoFilePath)
+                        .exists();
+                System.out.println("****************" + exists + videoFilePath);
+                if (exists) {
+                    test.get().log(Status.INFO, "<a target=\"_parent\" href="
+                            + "screenshot/android/" + device_udid.replaceAll("\\W", "_")
                             + "/" + className
                             + "/" + result.getMethod().getMethodName()
                             + "/" + result.getMethod()
                             .getMethodName() + ".mp4" + ">Videologs</a>");
                 }
-            } else if (appiumParallelTest.driver.toString().split(":")[0].trim().equals("IOSDriver")) {
+            } else if (driver.toString().split(":")[0].trim().equals("IOSDriver")) {
                 if (new File(System.getProperty("user.dir")
-                        + "/target/screenshot/iOS/" + appiumParallelTest.device_udid
+                        + "/target/screenshot/iOS/" + device_udid
                         .replaceAll("\\W", "_") + "/" + className + "/" + result.getMethod()
                         .getMethodName() + "/" + result.getMethod().getMethodName() + ".mp4")
                         .exists()) {
-                    appiumParallelTest.test.get().log(Status.INFO, "<a target=\"_parent\" href="
-                            + "screenshot/iOS/" + appiumParallelTest.device_udid.replaceAll("\\W", "_")
+                    test.get().log(Status.INFO, "<a target=\"_parent\" href="
+                            + "screenshot/iOS/" + device_udid.replaceAll("\\W", "_")
                             + "/" + className
                             + "/" + result.getMethod().getMethodName() + "/" + result.getMethod()
                             .getMethodName() + ".mp4" + ">Videologs</a>");
@@ -135,14 +125,32 @@ class TestLogger {
         ExtentManager.getExtent().flush();
     }
 
+    public String getClassName(String s) {
+        final String classNameCur = s.substring(1);
+        final Package[] packages = Package.getPackages();
+        String className = null;
+        for (final Package p : packages) {
+            final String pack = p.getName();
+            final String tentative = pack + "." + classNameCur;
+            try {
+                Class.forName(tentative);
+            } catch (final ClassNotFoundException e) {
+                continue;
+            }
+            className = tentative;
+            break;
+        }
+        return className;
+    }
+
     private void stopViewRecording(ITestResult result, String className,
                                    String device_udid) throws IOException, InterruptedException {
         if (System.getenv("VIDEO_LOGS") != null) {
             try {
-                videoRecording.stopVideoRecording(device_udid, getClass().getName(),
+                videoRecording.stopVideoRecording(device_udid, className,
                         result.getMethod().getMethodName(), result.getMethod().getMethodName());
             } catch (IOException e) {
-                videoRecording.stopVideoRecording(device_udid, getClass().getName(),
+                videoRecording.stopVideoRecording(device_udid,className,
                         result.getMethod().getMethodName(), result.getMethod().getMethodName());
             } catch (InterruptedException e) {
                 System.out.println("");
@@ -177,7 +185,8 @@ class TestLogger {
         }
     }
 
-    private void handleTestFailure(ITestResult result, String className, ThreadLocal<ExtentTest> test,
+    private void handleTestFailure(ITestResult result, String className,
+                                   ThreadLocal<ExtentTest> test,
                                    AppiumDriver<MobileElement> driver, String device_udid,
                                    String deviceModel) throws IOException, InterruptedException {
         if (result.getStatus() == ITestResult.FAILURE) {
@@ -250,7 +259,8 @@ class TestLogger {
     }
 
     public void captureScreenShot(String screenShotName, int status, String className,
-                                  String methodName, AppiumDriver<MobileElement> driver,String deviceModel,
+                                  String methodName, AppiumDriver<MobileElement> driver,
+                                  String deviceModel,
                                   String device_udid) throws IOException, InterruptedException {
         String context = driver.getContext();
         boolean contextChanged = false;
