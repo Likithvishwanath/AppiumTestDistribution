@@ -21,6 +21,7 @@ public class DeviceCapabilityManager {
     public synchronized DesiredCapabilities androidNative(String  device_udid) {
         System.out.println("Setting Android Desired Capabilities:");
         DesiredCapabilities androidCapabilities = new DesiredCapabilities();
+        androidCapabilities.setCapability(MobileCapabilityType.PLATFORM_NAME, "Android");
         androidCapabilities.setCapability(MobileCapabilityType.DEVICE_NAME, "Android");
         androidCapabilities.setCapability(MobileCapabilityType.PLATFORM_VERSION, "5.X");
         androidCapabilities.setCapability(AndroidMobileCapabilityType.APP_ACTIVITY,
@@ -38,6 +39,7 @@ public class DeviceCapabilityManager {
 
     public synchronized DesiredCapabilities androidWeb() {
         DesiredCapabilities androidWebCapabilities = new DesiredCapabilities();
+        androidWebCapabilities.setCapability(MobileCapabilityType.PLATFORM_NAME, "Android");
         androidWebCapabilities.setCapability(MobileCapabilityType.DEVICE_NAME, "Android");
         androidWebCapabilities.setCapability(MobileCapabilityType.PLATFORM_VERSION, "5.0.X");
         // If you want the tests on real device, make sure chrome browser is
@@ -53,6 +55,8 @@ public class DeviceCapabilityManager {
             throws InterruptedException,IOException {
         DesiredCapabilities iOSCapabilities = new DesiredCapabilities();
         System.out.println("Setting iOS Desired Capabilities:");
+        iOSCapabilities.setCapability(MobileCapabilityType.PLATFORM_NAME,
+            "iOS");
         iOSCapabilities.setCapability(MobileCapabilityType.PLATFORM_VERSION,
                  "6.0");
         iOSCapabilities.setCapability(MobileCapabilityType.APP,

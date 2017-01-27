@@ -9,7 +9,7 @@ import com.aventstack.extentreports.ExtentTest;
 import com.aventstack.extentreports.Status;
 import com.report.factory.ExtentManager;
 import com.report.factory.ExtentTestManager;
-import com.video.recorder.Flick;
+
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.MobileElement;
 import io.appium.java_client.android.AndroidDriver;
@@ -20,7 +20,7 @@ import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
-import org.openqa.selenium.logging.LogEntry;
+
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -92,7 +92,7 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
     }
 
     public synchronized AppiumServiceBuilder startAppiumServer(
-            String device, String methodName,String tag) throws Exception {
+            String device, String methodName, String tag) throws Exception {
         if (prop.containsKey("CI_BASE_URI")) {
             CI_BASE_URI = prop.getProperty("CI_BASE_URI").toString().trim();
         } else if (CI_BASE_URI == null || CI_BASE_URI.isEmpty()) {
@@ -326,13 +326,13 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
     }
 
     public void startLogResults(String methodName) throws FileNotFoundException {
-        testLogger.startLogging(methodName, driver, device_udid,getClass().getName());
+        testLogger.startLogging(methodName, driver, device_udid, getClass().getName());
     }
 
     public void endLogTestResults(ITestResult result) throws IOException, InterruptedException {
-        if (driver.toString().split(":")[0].trim().equals("AndroidDriver")) {
+        if (driver.getSessionDetails().get("platformName").toString().equals("Android")) {
             deviceModel = androidDevice.getDeviceModel(device_udid);
-        } else if (driver.toString().split(":")[0].trim().equals("IOSDriver")) {
+        } else if (driver.getSessionDetails().get("platformName").toString().equals("iOS")) {
             deviceModel = iosDevice.getIOSDeviceProductTypeAndVersion(device_udid);
         }
         testLogger.endLog(result, device_udid, deviceModel, test, driver);
@@ -348,7 +348,7 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
             ExtentManager.getExtent().flush();
         }
         appiumMan.destroyAppiumNode();
-        if (driver.toString().split(":")[0].trim().equals("IOSDriver")) {
+        if (driver.getSessionDetails().get("platformName").toString().equals("iOS")) {
             iosDevice.destroyIOSWebKitProxy();
         }
         deviceManager.freeDevice(device_udid);
@@ -414,7 +414,7 @@ public class AppiumParallelTest extends TestListenerAdapter implements ITestList
             throws IOException, InterruptedException {
         String context = getDriver().getContext();
         boolean contextChanged = false;
-        if (getDriver().toString().split(":")[0].trim().equals("AndroidDriver") && !context
+        if (getDriver().getSessionDetails().get("platformName").toString().equals("Android") && !context
                 .equals("NATIVE_APP")) {
             getDriver().context("NATIVE_APP");
             contextChanged = true;
